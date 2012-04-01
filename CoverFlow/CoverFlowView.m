@@ -62,7 +62,7 @@
     flowView.middleImageScale = middleImageScale;
 
     //default set middle image to the first image in the source images array
-    flowView.currentRenderingImageIndex = 0;
+    flowView.currentRenderingImageIndex = 6;
 
     flowView.images = [NSMutableArray arrayWithArray:rawImages];
     flowView.imageLayers = [[NSMutableArray alloc] initWithCapacity:flowView.sideVisibleImageCount* 2 + 1];
@@ -87,8 +87,8 @@
     if (self) {
         //set up perspective
         CATransform3D transformPerspective = CATransform3DIdentity;
-        transformPerspective.m34 = -1.0 / 500.0;
-        self.layer.sublayerTransform = transformPerspective;
+                        transformPerspective.m34 = -1.0 / 500.0;
+                        self.layer.sublayerTransform = transformPerspective;
     }
 
     return self;
@@ -103,10 +103,10 @@
     CGFloat rightRadian = -M_PI/3;
 
     //gap between images in side
-    CGFloat gapAmongSideImages = 20.0f;
+    CGFloat gapAmongSideImages = 30.0f;
 
     //gap between middle one and neigbour(this word is so hard to type wrong: WTF)
-    CGFloat gapBetweenMiddleAndSide = 200.0f;
+    CGFloat gapBetweenMiddleAndSide = 100.0f;
 
     //setup the layer templates
     //let's start from left side

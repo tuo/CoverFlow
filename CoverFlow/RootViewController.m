@@ -39,6 +39,8 @@
 
 }
 
-
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
+	return NO;
+}
 
 @end
