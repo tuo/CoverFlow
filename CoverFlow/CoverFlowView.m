@@ -8,6 +8,8 @@
 #import <QuartzCore/QuartzCore.h>
 #import <CoreGraphics/CoreGraphics.h>
 
+#define DISTNACE_TO_MAKE_MOVE_FOR_SWIPE 60
+
 @interface CoverFlowView ()
 
 //setup templates
@@ -54,6 +56,128 @@
 @synthesize middleImageScale = _middleImageScale;
 
 
+- (void)adjustReflectionBounds:(CALayer *)layer scale:(CGFloat)scale {
+// set originLayer's reflection bounds
+    CALayer *reflectLayer = (CALayer*)[layer.sublayers objectAtIndex:0];
+    [self scaleBounds:reflectLayer x:scale y:scale];
+    // set originLayer's reflection bounds
+    [self scaleBounds:reflectLayer.mask x:scale y:scale];
+    // set originLayer's reflection bounds
+    [self scaleBounds:(CALayer*)[reflectLayer.sublayers objectAtIndex:0] x:scale y:scale];
+    // set originLayer's reflection position
+    reflectLayer.position = CGPointMake(layer.bounds.size.width/2, layer.bounds.size.height*1.5);
+    // set originLayer's mask position
+    reflectLayer.mask.position = CGPointMake(reflectLayer.bounds.size.width/2, reflectLayer.bounds.size.height/2);
+    // set originLayer's reflection position
+    ((CALayer*)[reflectLayer.sublayers objectAtIndex:0]).position = CGPointMake(reflectLayer.bounds.size.width/2, reflectLayer.bounds.size.height/2);
+}
+
+- (void)moveOneStep:(BOOL)isSwipingToLeftDirection {
+    //when move the first/last image,disable moving
+    if ((self.currentRenderingImageIndex == 0 && !isSwipingToLeftDirection) || (self.currentRenderingImageIndex == self.images.count -1 && isSwipingToLeftDirection))
+        return;
+
+    int offset = isSwipingToLeftDirection ?  -1 : 1;
+    int indexOffsetFromImageLayersToTemplates = (self.currentRenderingImageIndex - self.sideVisibleImageCount < 0) ? (self.sideVisibleImageCount + 1 + offset - self.currentRenderingImageIndex) : 1 + offset;
+    for (int i = 0; i < self.imageLayers.count; i++) {
+        CALayer *originLayer = [self.imageLayers objectAtIndex:i];
+        CALayer *targetTemplate = [self.templateLayers objectAtIndex: i + indexOffsetFromImageLayersToTemplates];
+
+        [CATransaction setAnimationDuration:1];
+        originLayer.position = targetTemplate.position;
+        originLayer.zPosition = targetTemplate.zPosition;
+        originLayer.transform = targetTemplate.transform;
+        //set originlayer's bounds
+
+        CGFloat scale = 1.0f;
+        if (i + indexOffsetFromImageLayersToTemplates - 1 == self.sideVisibleImageCount) {
+            scale = self.middleImageScale  / self.sideVisibleImageScale;
+        } else if (((i + indexOffsetFromImageLayersToTemplates - 1 == self.sideVisibleImageCount - 1) && isSwipingToLeftDirection) ||
+                ((i + indexOffsetFromImageLayersToTemplates - 1 == self.sideVisibleImageCount + 1) && !isSwipingToLeftDirection)) {
+            scale = self.sideVisibleImageScale / self.middleImageScale;
+        }
+
+        originLayer.bounds = CGRectMake(0, 0, originLayer.bounds.size.width * scale, originLayer.bounds.size.height * scale);
+        [self adjustReflectionBounds:originLayer scale:scale];
+
+    }
+
+    if (isSwipingToLeftDirection){
+        //when current rendering index  >= sidecout
+        if(self.currentRenderingImageIndex >= self.sideVisibleImageCount){
+            CALayer *removeLayer = [self.imageLayers objectAtIndex:0];
+            [self.imageLayers removeObject:removeLayer];
+            [removeLayer removeFromSuperlayer];
+        }
+        int num = self.images.count - self.sideVisibleImageCount - 1;
+        if (self.currentRenderingImageIndex < num){
+            UIImage *candidateImage = [self.images objectAtIndex:self.currentRenderingImageIndex  + self.sideVisibleImageCount + 1];
+            CALayer *candidateLayer = [CALayer layer];
+            candidateLayer.contents = (__bridge id)candidateImage.CGImage;
+            CGFloat scale = self.sideVisibleImageScale;
+            candidateLayer.bounds = CGRectMake(0, 0, candidateImage.size.width * scale, candidateImage.size.height * scale);
+            [self.imageLayers addObject:candidateLayer];
+
+            CALayer *template = [self.templateLayers objectAtIndex:self.templateLayers.count - 2];
+            candidateLayer.position = template.position;
+            candidateLayer.zPosition = template.zPosition;
+            candidateLayer.transform = template.transform;
+
+            //show the layer
+            [self showImageAndReflection:candidateLayer];
+        }
+
+    }else{//if the right, then move the rightest layer and insert one to left (if left is full)
+
+        //when to remove rightest, only when image in the rightest is indeed sitting in the template  imagelayer's rightes
+        if (self.currentRenderingImageIndex + self.sideVisibleImageCount <= self.images.count -1) {
+            CALayer *removeLayer = [self.imageLayers lastObject];
+            [self.imageLayers removeObject:removeLayer];
+            [removeLayer removeFromSuperlayer];
+        }
+
+        //check out whether we need to add layer to left, only when (currentIndex - sideCount > 0)
+        if (self.currentRenderingImageIndex > self.sideVisibleImageCount){
+            UIImage *candidateImage = [self.images objectAtIndex:self.currentRenderingImageIndex - 1 - self.sideVisibleImageCount];
+            CALayer *candidateLayer = [CALayer layer];
+            candidateLayer.contents = (__bridge id)candidateImage.CGImage;
+            CGFloat scale = self.sideVisibleImageScale;
+            candidateLayer.bounds = CGRectMake(0, 0, candidateImage.size.width * scale, candidateImage.size.height * scale);
+            [self.imageLayers insertObject:candidateLayer atIndex:0];
+
+            CALayer *template = [self.templateLayers objectAtIndex:1];
+            candidateLayer.position = template.position;
+            candidateLayer.zPosition = template.zPosition;
+            candidateLayer.transform = template.transform;
+
+            //show the layer
+            [self showImageAndReflection:candidateLayer];
+        }
+
+    }
+    //update index if you move to right, index--
+    self.currentRenderingImageIndex = isSwipingToLeftDirection ? self.currentRenderingImageIndex + 1 : self.currentRenderingImageIndex - 1;
+
+}
+
+- (void)scaleBounds:(CALayer*)layer x:(CGFloat)scaleWidth y:(CGFloat)scaleHeight
+{
+    layer.bounds = CGRectMake(0, 0, layer.bounds.size.width*scaleWidth, layer.bounds.size.height*scaleHeight);
+}
+
+- (void)handleGesture:(UIPanGestureRecognizer *)recognizer {
+   if (recognizer.state == UIGestureRecognizerStateChanged){
+       //get offset
+       CGPoint offset = [recognizer translationInView:recognizer.view];
+       if (abs(offset.x) > DISTNACE_TO_MAKE_MOVE_FOR_SWIPE) {
+           BOOL isSwipingToLeftDirection = (offset.x > 0) ? NO :YES;
+           [self moveOneStep:isSwipingToLeftDirection];
+           [recognizer setTranslation:CGPointZero inView:recognizer.view];
+       }
+   }
+
+}
+
 + (id)coverFlowViewWithFrame:(CGRect)frame andImages:(NSMutableArray *)rawImages sideImageCount:(int)sideCount sideImageScale:(CGFloat)sideImageScale middleImageScale:(CGFloat)middleImageScale {
     CoverFlowView *flowView = [[CoverFlowView alloc] initWithFrame:frame];
 
@@ -69,7 +193,7 @@
     flowView.templateLayers = [[NSMutableArray alloc] initWithCapacity:(flowView.sideVisibleImageCount + 1)* 2 + 1];
 
     //register the pan gesture to figure out whether user has intention to move to next/previous image
-    UIPanGestureRecognizer *gestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:flowView action:@selector(moveOneStepAction:)];
+    UIPanGestureRecognizer *gestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:flowView action:@selector(handleGesture:)];
     [flowView addGestureRecognizer:gestureRecognizer];
 
     //now almost setup
