@@ -227,10 +227,10 @@
     CGFloat rightRadian = -M_PI/3;
 
     //gap between images in side
-    CGFloat gapAmongSideImages = 30.0f;
+    CGFloat gapAmongSideImages = 80.0f;
 
     //gap between middle one and neigbour(this word is so hard to type wrong: WTF)
-    CGFloat gapBetweenMiddleAndSide = 100.0f;
+    CGFloat gapBetweenMiddleAndSide = 150.0f;
 
     //setup the layer templates
     //let's start from left side
