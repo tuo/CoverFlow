@@ -72,6 +72,10 @@
     ((CALayer*)[reflectLayer.sublayers objectAtIndex:0]).position = CGPointMake(reflectLayer.bounds.size.width/2, reflectLayer.bounds.size.height/2);
 }
 
+- (void)removeLayerFromSuper:(CALayer *)layerToBeRemoved {
+    [layerToBeRemoved removeFromSuperlayer];
+}
+
 - (void)moveOneStep:(BOOL)isSwipingToLeftDirection {
     //when move the first/last image,disable moving
     if ((self.currentRenderingImageIndex == 0 && !isSwipingToLeftDirection) || (self.currentRenderingImageIndex == self.images.count -1 && isSwipingToLeftDirection))
@@ -107,7 +111,11 @@
         if(self.currentRenderingImageIndex >= self.sideVisibleImageCount){
             CALayer *removeLayer = [self.imageLayers objectAtIndex:0];
             [self.imageLayers removeObject:removeLayer];
-            [removeLayer removeFromSuperlayer];
+            CABasicAnimation *fadeOut = [CABasicAnimation animationWithKeyPath:@"opacity"];
+            [fadeOut setToValue:[NSNumber numberWithFloat:0.0]];
+            [fadeOut setDuration:0.5f];
+            [removeLayer addAnimation:fadeOut forKey:@"fadeout"];
+            [self performSelector:@selector(removeLayerFromSuper:) withObject:removeLayer afterDelay:0.5f];
         }
         int num = self.images.count - self.sideVisibleImageCount - 1;
         if (self.currentRenderingImageIndex < num){
@@ -133,7 +141,12 @@
         if (self.currentRenderingImageIndex + self.sideVisibleImageCount <= self.images.count -1) {
             CALayer *removeLayer = [self.imageLayers lastObject];
             [self.imageLayers removeObject:removeLayer];
-            [removeLayer removeFromSuperlayer];
+            CABasicAnimation *fadeOut = [CABasicAnimation animationWithKeyPath:@"opacity"];
+                        [fadeOut setToValue:[NSNumber numberWithFloat:0.0]];
+                        [fadeOut setDuration:0.5f];
+                        [removeLayer addAnimation:fadeOut forKey:@"fadeout"];
+                        [self performSelector:@selector(removeLayerFromSuper:) withObject:removeLayer afterDelay:0.5f];
+
         }
 
         //check out whether we need to add layer to left, only when (currentIndex - sideCount > 0)
@@ -227,10 +240,10 @@
     CGFloat rightRadian = -M_PI/3;
 
     //gap between images in side
-    CGFloat gapAmongSideImages = 30.0f;
+    CGFloat gapAmongSideImages = 80.0f;
 
     //gap between middle one and neigbour(this word is so hard to type wrong: WTF)
-    CGFloat gapBetweenMiddleAndSide = 100.0f;
+    CGFloat gapBetweenMiddleAndSide = 150.0f;
 
     //setup the layer templates
     //let's start from left side
