@@ -46,4 +46,9 @@
     // Return YES for supported orientations
     return (interfaceOrientation != UIInterfaceOrientationPortraitUpsideDown);
 }
+
+- (void)dealloc {
+	NSLog(@"DEALLOC");
+}
+
 @end
